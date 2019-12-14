@@ -2,6 +2,7 @@
 
 To vizualize the lattice structure of the set of stable matchings,
 this tool generates animations in HTML+SVG+Javascript.
+To see the result, have a look the animations available on my [webpage](https://www.irif.fr/~mauras/stablematchings/).
 
 * This tool requires dot (package graphviz on linux): https://www.graphviz.org/
 * To generate an animation, just run `bash gen.sh` in a linux command line.
