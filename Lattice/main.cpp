@@ -12,48 +12,50 @@ using namespace std;
 #include "deferred_acceptance.cpp"
 #include "visualization.cpp"
 
-const bool debug = true;
+const bool randomness = false;
 
 int main(int argc, char** argv)
 {
-  int nbMen = 1, nbWomen = 1;
-  double lambdaMen = 1, lambdaWomen = 1;
-  bool ok = false;
-  if (argc == 5)
+  int nbMen = 0, nbWomen = 0;
+  vvi prefMen, prefWomen;
+  
+  if (randomness)
   {
-    nbMen = atoi(argv[1]);
-    nbWomen = atoi(argv[2]);
-    lambdaMen = atof(argv[3]);
-    lambdaWomen = atof(argv[4]);
-    if (1 <= nbMen && nbMen <= 10000)
-    if (1 <= nbWomen && nbWomen <= 10000)
-    if (0 < lambdaMen && lambdaMen <= 1)
-    if (0 < lambdaWomen && lambdaWomen <= 1)
-      ok = true;
+    double lambdaMen = 1, lambdaWomen = 1;
+    bool ok = false;
+    if (argc == 5)
+    {
+      nbMen = atoi(argv[1]);
+      nbWomen = atoi(argv[2]);
+      lambdaMen = atof(argv[3]);
+      lambdaWomen = atof(argv[4]);
+      if (1 <= nbMen && nbMen <= 10000)
+      if (1 <= nbWomen && nbWomen <= 10000)
+      if (0 < lambdaMen && lambdaMen <= 1)
+      if (0 < lambdaWomen && lambdaWomen <= 1)
+        ok = true;
+    }
+    
+    if (!ok)
+    {
+      cerr << "Usage: " << argv[0] << " nbMen nbWomen lambdaMen lambdaWomen" << endl;
+      cerr << "- 0 < lambdaMen <= 1" << endl;
+      cerr << "- 0 < lambdaWomen <= 1" << endl;
+      return 1;
+    }
+  
+    mt19937 generator(54);
+    
+    cerr << "Generation of preferences..." << endl;
+    
+    prefMen.resize(nbMen);
+    for (int i=0; i<nbMen; i++)
+      prefMen[i] = generateGeometric(generator, nbWomen, lambdaWomen);
+    prefWomen.resize(nbWomen);
+    for (int i=0; i<nbWomen; i++)
+      prefWomen[i] = generateGeometric(generator, nbMen, lambdaMen);
   }
-  
-  if (debug)
-    ok = true;
-  
-  if (!ok)
-  {
-    cerr << "Usage: " << argv[0] << " nbMen nbWomen lambdaMen lambdaWomen" << endl;
-    cerr << "- 0 < lambdaMen <= 1" << endl;
-    cerr << "- 0 < lambdaWomen <= 1" << endl;
-    return 1;
-  }
-  
-  mt19937 generator(54);
-  
-  cerr << "Generation of preferences..." << endl;
-  
-  vvi prefMen(nbMen), prefWomen(nbWomen);
-  for (int i=0; i<(int)prefMen.size(); i++)
-    prefMen[i] = generateGeometric(generator, prefWomen.size(), lambdaWomen);
-  for (int i=0; i<(int)prefWomen.size(); i++)
-    prefWomen[i] = generateGeometric(generator, prefMen.size(), lambdaMen);
-  
-  if (debug)
+  else
   {
     //tie(prefMen, prefWomen) = generateExample();
     //tie(prefMen, prefWomen) = generateBounded();
@@ -62,9 +64,11 @@ int main(int argc, char** argv)
     //tie(prefMen, prefWomen) = generateCycleRand(generator, 20);
     //random_shuffle(prefMen.begin(), prefMen.end());
     //random_shuffle(prefWomen.begin(), prefWomen.end());
-    
-    //tie(prefMen, prefWomen) = generateRotationPerfect(5); // ;-)
+    //tie(prefMen, prefWomen) = generateRotationPerfect(5);
   }
+  
+  nbMen = prefMen.size();
+  nbWomen = prefWomen.size();
   
   cerr << "Computing rotations" << endl;
   
@@ -73,7 +77,13 @@ int main(int argc, char** argv)
   
   cerr << "Output results" << endl;
   
-  Visualization vis(prefMen, prefWomen, gs.rotation, gs.edges);
+  vector<string> nameMen, nameWomen;
+  for (int i=1; i<=nbMen; i++)
+    nameMen.push_back(to_string(i));
+  for (int i=0; i<nbWomen; i++) // works when nbWomen <= 26
+    nameWomen.push_back(string(1, 'A' + i % 26));
+  
+  Visualization vis(nameMen, nameWomen, prefMen, prefWomen, gs.rotation, gs.edges);
   vis.enumerate();
   vis.print_data(ofstream("data.js"));
   vis.print_rotations(ofstream("rotations.dot"));

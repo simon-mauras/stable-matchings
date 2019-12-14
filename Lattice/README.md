@@ -8,5 +8,5 @@ this tool generates animations in HTML+SVG+Javascript.
 * Then open the file `result/index.html` with a web browser (for example Firefox). 
 With some web browsers (for example Google Chrome), the animation won't work if the
 html is opened in local, without an http request.
-To solve this issue, start a http server (for example "python3 -m http.server")
-and access the page at http://localhost. 
+To solve this issue, start a http server (for example `python3 -m http.server`)
+and access the page at `http://localhost`. 

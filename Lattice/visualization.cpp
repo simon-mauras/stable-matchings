@@ -14,6 +14,7 @@ class Visualization
 {
   public:
   const int nbMen, nbWomen;
+  const vector<string> &nameMen, &nameWomen;
   const vvi &prefMen, &prefWomen;
   vvi scoreMen, scoreWomen;
   
@@ -23,10 +24,13 @@ class Visualization
   vector<Matching> matchingNodes;        // graph of matchings
   vvi matchingEdges, matchingClosure;
   
-  Visualization(const vvi &prefM, const vvi &prefW,
+  Visualization(const vector<string> &nameM,
+                const vector<string> &nameW, 
+                const vvi &prefM, const vvi &prefW,
                 const vector<vector<pii>> &rot,
                 vector<set<int>> edg)
   : nbMen(prefM.size()), nbWomen(prefW.size()),
+    nameMen(nameM), nameWomen(nameW),
     prefMen(prefM), prefWomen(prefW),
     scoreMen(nbMen, vi(nbWomen,-1)),
     scoreWomen(nbWomen, vi(nbMen,-1)),
@@ -61,8 +65,6 @@ class Visualization
   }
   
   void enumerate();
-  string name_man(int i);
-  string name_woman(int i);
   void print_data(ostream &&out);
   void print_rotations(ostream &&out);
   void print_matchings(ostream &&out);
@@ -275,7 +277,7 @@ void Visualization::print_rotations(ostream &&out)
     out << "\",style=\"filled\",label=\"";
     if (idRotation > 0)
       for (auto r : rotationNodes[idRotation])
-        out << "(" << name_man(r.first) << "," << name_woman(r.second) << ")";
+        out << "(" << nameMen[r.first] << "," << nameWomen[r.second] << ")";
     out << "\"];" << endl;
     for (auto e : redges[idRotation])
       out << idRotation << " -> " << e << ";" << endl;
@@ -307,7 +309,7 @@ void Visualization::print_preferences(ostream &&out)
   out << "th { border: 1px solid black; }" << endl;
   out << "</style>\n</head>\n<body>\n<table>\n<tr>\n" << endl;
     for (int idMan=0; idMan<nbMen; idMan++)
-      out << "<th>" << name_man(idMan) << "</th>";
+      out << "<th>" << nameMen[idMan] << "</th>";
   out << "</tr>" << endl;
   for (int i=0; i<nbWomen; i++)
   {
@@ -316,14 +318,14 @@ void Visualization::print_preferences(ostream &&out)
     {
       out << "<td id=\"pM" << idMan << "-" << i << "\">";
       if (i < (int)prefMen[idMan].size())
-        out << name_woman(prefMen[idMan][i]);
+        out << nameWomen[prefMen[idMan][i]];
       out << "</td>";
     }
     out << "</tr>" << endl;
   }
   out << "</table>\n<p/>\n<table>\n<tr>\n" << endl;
     for (int idWoman=0; idWoman<nbWomen; idWoman++)
-      out << "<th>" << name_woman(idWoman) << "</th>";
+      out << "<th>" << nameWomen[idWoman] << "</th>";
   out << "</tr>";
   for (int i=0; i<nbMen; i++)
   {
@@ -332,31 +334,10 @@ void Visualization::print_preferences(ostream &&out)
     {
       out << "<td id=\"pW" << idWoman << "-" << i << "\">";
       if (i < (int)prefWomen[idWoman].size())
-        out << name_man(prefWomen[idWoman][i]);
+        out << nameMen[prefWomen[idWoman][i]];
       out << "</td>";
     }
     out << "</tr>" << endl;
   }
   out << "</body>\n</html>" << endl;
-}
-
-string Visualization::name_man(int i)
-{
-  i += 1;
-  string s = "";
-  do {
-    s = (char)('0' + i % 10) + s;
-    i /= 10;
-  } while (i);
-  return s;
-}
-
-string Visualization::name_woman(int i)
-{
-  string s = "";
-  do {
-    s = (char)('A' + i % 26) + s;
-    i /= 26;
-  } while (i);
-  return s;
 }
