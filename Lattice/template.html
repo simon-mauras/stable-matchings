@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <title>Stable matchings</title>
+    <script src="data.js"></script>
+    <script src="../script.js"></script>
+    <style>
+      html, body, table { width:100%; margin:0; }
+      object { border: 1px solid black; height:90vh; width:100%; }
+      td { text-align: center; font-size: 20pt; width:33%; } 
+    </style>
+  </head>
+  <body onload="init()">
+  <table>
+    <tr>
+      <td><object id="preferences" data="preferences.html" type="text/html">
+      </object></td>
+      <td><object id="rotations" data="rotations.svg" type="image/svg+xml">
+      </object></td>
+      <td><object id="matchings" data="matchings.svg" type="image/svg+xml">
+      </object></td>
+    </tr>
+    <tr>
+      <td>Preference lists</td>
+      <td>Closed sets of rotations</td>
+      <td>Lattice of stable matchings</td>
+    </tr>
+  </table>
+  </body>
+</html>
