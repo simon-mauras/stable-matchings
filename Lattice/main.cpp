@@ -44,7 +44,9 @@ int main(int argc, char** argv)
       return 1;
     }
   
-    mt19937 generator(54);
+    lambdaMen = lambdaWomen = 1;
+    //mt19937 generator(11); nbMen = nbWomen = 10;
+    mt19937 generator(54); nbMen = nbWomen = 20;
     
     cerr << "Generation of preferences..." << endl;
     
@@ -60,11 +62,12 @@ int main(int argc, char** argv)
     //tie(prefMen, prefWomen) = generateExample();
     //tie(prefMen, prefWomen) = generateBounded();
     //tie(prefMen, prefWomen) = generateCycle(10);
-    tie(prefMen, prefWomen) = generateWorstCase(3);
+    //tie(prefMen, prefWomen) = generateWorstCase(3);
     //tie(prefMen, prefWomen) = generateCycleRand(generator, 20);
     //random_shuffle(prefMen.begin(), prefMen.end());
     //random_shuffle(prefWomen.begin(), prefWomen.end());
     //tie(prefMen, prefWomen) = generateRotationPerfect(5);
+    tie(prefMen, prefWomen) = generateTranspositions(10);
   }
   
   nbMen = prefMen.size();

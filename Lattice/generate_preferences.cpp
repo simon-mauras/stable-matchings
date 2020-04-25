@@ -116,6 +116,19 @@ pair<vvi,vvi> generateWorstCase(int lg)
   return {prefMen, prefWomen};
 }
 
+pair<vvi,vvi> generateTranspositions(int N)
+{
+  vvi prefMen(N, vi(N)), prefWomen(N, vi(N));
+  for (int i=0; i<N; i++)
+    for (int j=0; j<N; j++)
+      prefMen[i][j] = prefWomen[i][j] = j;
+  for (int i=0; i+1<N; i+=2)
+  {
+    swap(prefMen[i+1][i], prefMen[i+1][i+1]);
+    swap(prefWomen[i][i], prefWomen[i][i+1]);
+  }
+  return {prefMen, prefWomen};
+}
 pair<vvi, vvi> generateRotationPerfect(int N)
 {
   assert(N == 5);

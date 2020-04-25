@@ -199,6 +199,7 @@ void Visualization::print_data(ostream &&out)
   out << "var nbWomen = " << nbWomen << ";" << endl;
   out << "var nbMatchings = " << nbMatchings << ";" << endl;
   out << "var nbRotations = " << nbRotations << ";" << endl;
+  
   out << "var downset = [\n";
   for (int idMatching=0; idMatching<nbMatchings; idMatching++)
   {
@@ -213,6 +214,7 @@ void Visualization::print_data(ostream &&out)
     }
   }
   out << "]\n];" << endl;
+  
   out << "var transition = [\n";
   for (int idMatching=0; idMatching<nbMatchings; idMatching++)
   {
@@ -227,6 +229,7 @@ void Visualization::print_data(ostream &&out)
     }
   }
   out << "]\n];" << endl;
+  
   out << "var prefM = [\n";
   for (int idMatching=0; idMatching<nbMatchings; idMatching++)
   {
@@ -241,6 +244,7 @@ void Visualization::print_data(ostream &&out)
     }
   }
   out << "]\n];" << endl;
+  
   out << "var prefW = [\n";
   for (int idMatching=0; idMatching<nbMatchings; idMatching++)
   {
@@ -262,6 +266,47 @@ void Visualization::print_data(ostream &&out)
       if (idWoman > 0)
         out << ",";
       out << lastW[idWoman];
+    }
+  }
+  out << "]\n];" << endl;
+  
+  vvi couples(nbMen, vi(nbWomen, -1));
+  for (int idRotation=0; idRotation<nbRotations; idRotation++)
+    for (pii c : rotationNodes[idRotation])
+      couples[c.first][c.second] = idRotation;
+  
+  out << "var stableM = [\n";
+  for (int idMan=0; idMan<nbMen; idMan++)
+  {
+    if (idMan > 0)
+      out << "],\n";
+    out << "[";
+    for (int idProp=0; idProp<nbWomen; idProp++)
+    {
+      if (idProp > 0)
+        out << ",";
+      int idRotation = -1;
+      if (idProp < (int)prefMen[idMan].size())
+        idRotation = couples[idMan][prefMen[idMan][idProp]];
+      out << idRotation;
+    }
+  }
+  out << "]\n];" << endl;
+  
+  out << "var stableW = [\n";
+  for (int idWoman=0; idWoman<nbWomen; idWoman++)
+  {
+    if (idWoman > 0)
+      out << "],\n";
+    out << "[";
+    for (int idProp=0; idProp<nbMen; idProp++)
+    {
+      if (idProp > 0)
+        out << ",";
+      int idRotation = -1;
+      if (idProp < (int)prefWomen[idWoman].size())
+        idRotation = couples[prefWomen[idWoman][idProp]][idWoman];
+      out << idRotation;
     }
   }
   out << "]\n];" << endl;
@@ -305,8 +350,8 @@ void Visualization::print_preferences(ostream &&out)
   out << "table { width:100%;";
   out << "border: 1px solid black; border-collapse:collapse }";
   out << "html, body { width:100%; height:100%; margin:0; }" << endl;
-  out << "td, th { text-align: center; }" << endl;
-  out << "th { border: 1px solid black; }" << endl;
+  out << "td, th { text-align: center; font-size:20pt; }" << endl;
+  out << "th { background-color:black; color:white; }" << endl;
   out << "</style>\n</head>\n<body>\n<table>\n<tr>\n" << endl;
     for (int idMan=0; idMan<nbMen; idMan++)
       out << "<th>" << nameMen[idMan] << "</th>";
