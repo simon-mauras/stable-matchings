@@ -316,7 +316,7 @@ void Visualization::print_rotations(ostream &&out)
 {
   int nbRotations = rotationNodes.size();
   out << "digraph rotations {" << endl;
-  for (int idRotation=0; idRotation<nbRotations; idRotation++)
+  for (int idRotation=1; idRotation<nbRotations; idRotation++)
   {
     out << idRotation << "[id=\"r" << idRotation;
     out << "\",style=\"filled\",label=\"";

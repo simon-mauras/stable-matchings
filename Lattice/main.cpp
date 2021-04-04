@@ -62,12 +62,12 @@ int main(int argc, char** argv)
     //tie(prefMen, prefWomen) = generateExample();
     //tie(prefMen, prefWomen) = generateBounded();
     //tie(prefMen, prefWomen) = generateCycle(10);
-    //tie(prefMen, prefWomen) = generateWorstCase(3);
+    tie(prefMen, prefWomen) = generateWorstCase(3);
     //tie(prefMen, prefWomen) = generateCycleRand(generator, 20);
     //random_shuffle(prefMen.begin(), prefMen.end());
     //random_shuffle(prefWomen.begin(), prefWomen.end());
     //tie(prefMen, prefWomen) = generateRotationPerfect(5);
-    tie(prefMen, prefWomen) = generateTranspositions(10);
+    //tie(prefMen, prefWomen) = generateTranspositions(10);
   }
   
   nbMen = prefMen.size();
@@ -81,10 +81,18 @@ int main(int argc, char** argv)
   cerr << "Output results" << endl;
   
   vector<string> nameMen, nameWomen;
+  //* men = number, women = letters
   for (int i=1; i<=nbMen; i++)
     nameMen.push_back(to_string(i));
   for (int i=0; i<nbWomen; i++) // works when nbWomen <= 26
     nameWomen.push_back(string(1, 'A' + i % 26));
+  //*/
+  /* experimental: html formula
+  for (int i=1; i<=nbMen; i++)
+    nameMen.push_back("m<sub>" + to_string(i) + "</sub>");
+  for (int i=1; i<=nbWomen; i++)
+    nameWomen.push_back("w<sub>" + to_string(i) + "</sub>");
+  //*/
   
   Visualization vis(nameMen, nameWomen, prefMen, prefWomen, gs.rotation, gs.edges);
   vis.enumerate();

@@ -13,7 +13,7 @@ function fill(group, color) {
 function callback_matching(idMatching) {
   // change the current matching
   var idRotation;
-  for (idRotation=0; idRotation<nbRotations; idRotation++) {
+  for (idRotation=1; idRotation<nbRotations; idRotation++) {
     var color = downset[idMatching][idRotation] ? color_active : color_inactive;
     fill(rotations[idRotation], color);
   }
@@ -79,7 +79,7 @@ function init() {
     {return function() { callback_matching(id);}}(idMatching);
     fill(matchings[idMatching], color_inactive);
   }
-  for (idRotation=0; idRotation<nbRotations; idRotation++) {
+  for (idRotation=1; idRotation<nbRotations; idRotation++) {
     rotations[idRotation] = r.getElementById("r" + idRotation);
     rotations[idRotation].onclick = function(id)
     {return function() { callback_rotation(id);}}(idRotation);
