@@ -1,37 +1,7 @@
 import numpy as np
+from run import solve
 from fractions import Fraction
 from subprocess import Popen, PIPE
-
-def solve(P, Q):
-  P, Q = np.array(P), np.array(Q)
-  assert(P.shape == Q.shape)
-  print("================================")
-  print("P =")
-  print(P)
-  print("Q =")
-  print(Q)
-  descr = "%d %d\n" % P.shape
-  for line in list(P) + list(Q.T):
-    descr += " ".join(map(str, line)) + "\n"
-  p = Popen("./main", stdin=PIPE, stdout=PIPE)
-  result = p.communicate(descr.encode())[0].decode()
-  data = []
-  for line in result.strip().split("\n"):
-    vals = line.split()
-    match = list(map(int, vals[:-1]))
-    proba = Fraction(vals[-1])
-    data.append((proba, match))
-    print(match, proba)
-  data.sort()
-  return data
-
-def proba_match(nbMen, nbWomen, data):
-  match = np.zeros((nbMen, nbWomen), dtype=object)
-  for p,m in data:
-    for w in range(nbWomen):
-      if m[w] != -1:
-        match[m[w],w] += p
-  return match
 
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
@@ -49,17 +19,20 @@ def draw_matching(match, nbMen, nbWomen):
     if match[idWoman] == -1:
       xdata = [coordW[idWoman][0]]
       ydata = [coordW[idWoman][1]]
-      da.add_artist(Line2D(xdata, ydata, marker="."))
+      da.add_artist(Line2D(xdata, ydata, marker="o",
+        markerfacecolor='w', color="k", linewidth=1))
   for idMan in range(nbMen):
     if idMan not in match:
       xdata = [coordM[idMan][0]]
       ydata = [coordM[idMan][1]]
-      da.add_artist(Line2D(xdata, ydata, marker="."))
+      da.add_artist(Line2D(xdata, ydata, marker="o",
+        markerfacecolor='w', color="k", linewidth=1))
   for idWoman,idMan in enumerate(match):
     if idMan != -1:
       xdata = [coordM[idMan][0], coordW[idWoman][0]]
       ydata = [coordM[idMan][1], coordW[idWoman][1]]
-      da.add_artist(Line2D(xdata, ydata, marker="."))
+      da.add_artist(Line2D(xdata, ydata, marker="o",
+        markerfacecolor='w', color="k", linewidth=1))
   return da
 
 from scipy.optimize import minimize
@@ -77,14 +50,16 @@ def best_angles(anglesB):
 
 def draw_figure(popularity, data):
   # init figure
-  fig, ax = plt.subplots(constrained_layout=True, figsize=(10,10))
+  fig, ax = plt.subplots(constrained_layout=True, figsize=(7,7))
   # pie plot
   wedges,_,texts = ax.pie([p for p,_ in data], 
     startangle=90, counterclock=False,
     autopct="", pctdistance=0.75,
-    wedgeprops={'width':0.5})
+    wedgeprops={'width':0.5,'linewidth':1,'edgecolor':'k','antialiased': True},
+    colors="w")
   # matrix plot
   nbMen, nbWomen = popularity.shape
+  """
   axmat = inset_axes(ax, "20%", "20%", loc="center")
   axmat.xaxis.tick_top()
   xticks, yticks = list(range(1,1+nbWomen)), list(range(1,1+nbMen))
@@ -98,10 +73,12 @@ def draw_figure(popularity, data):
   for idMan in range(nbMen):
     for idWoman in range(nbWomen):
       axmat.text(1+idWoman, 1+idMan, str(popularity[idMan, idWoman]))
+  """
   # angles
   anglesB = [(w.theta2 - w.theta1)/2. + w.theta1 for w in wedges]
   anglesA = best_angles(anglesB)
   # plot matchings
+  plt.rc('mathtext', fontset='stix')
   ax.set_xlim(-1.6, 1.6)
   ax.set_ylim(-1.6, 1.6)
   matchings = [ (p,m,w,t) for (p,m),w,t in zip(data, wedges, texts)]
@@ -109,7 +86,7 @@ def draw_figure(popularity, data):
     radius = 1.25
     if abs(w.theta2 - w.theta1) >= 10:
       t.set_text("$\\frac{%d}{%d}$" % (p.numerator, p.denominator))
-      t.set_size(15)
+      t.set_size(22)
     angA, angB = anglesA[i], anglesB[i]
     xA = radius * np.cos(np.deg2rad(angA))
     yA = radius * np.sin(np.deg2rad(angA))
@@ -127,10 +104,10 @@ def draw_figure(popularity, data):
       coordsA="data", coordsB="data")
     ax.add_artist(con)
 
-## Symmetric preferences: MPDA and WPDA induce the same distribution
+######## MAIN
 
 if __name__ == "__main__":
-
+  
   instances = []
 
   instances.append(np.array([
@@ -138,6 +115,7 @@ if __name__ == "__main__":
     [8, 1, 4]
   ]))
 
+  """
   instances.append(np.array([[1,3,5]]).T * np.array([[1,2,3]]))
 
   instances.append(np.array([
@@ -149,12 +127,31 @@ if __name__ == "__main__":
   ]))
 
   instances.append(instances[-1].T)
+  """
+
+  datas = [solve(popularity, popularity) for popularity in instances]
+  print(datas)
+
+  ## Hardcoded examples: popularity preferences
+  instances.append(np.array([[2, 4, 0],[8, 1, 4]]))
+  instances.append(np.array([[2, 4, 0],[8, 1, 4]]))
+  datas.append(sorted([
+  (Fraction(43, 975), (0, 1, -1)),
+  (Fraction(44, 325), (0, -1, 1)),
+  (Fraction(352, 585), (1, 0, -1)),
+  (Fraction(128, 585), (-1, 0, 1))
+  ]))
+  datas.append(sorted([
+  (Fraction(41, 1125), (0, 1, -1)),
+  (Fraction(44, 325), (0, -1, 1)),
+  (Fraction(8912, 14625), (1, 0, -1)),
+  (Fraction(128, 585), (-1, 0, 1))
+  ]))
 
   from matplotlib.backends.backend_pdf import PdfPages
 
   with PdfPages('result.pdf') as pdf:
-    for popularity in instances:
-      data = solve(popularity, popularity)
+    for popularity, data in zip(instances, datas):
       draw_figure(popularity, data)
       pdf.savefig()
       plt.close()

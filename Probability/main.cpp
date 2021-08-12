@@ -98,19 +98,16 @@ int main()
   int nbMen=0, nbWomen=0;
   cin >> nbMen >> nbWomen;
   
-  cerr << "read input" << endl;
-  int popularity[nbMen][nbWomen];
-  for (int idMan=0; idMan<nbMen; idMan++)
-    for (int idWoman=0; idWoman<nbWomen; idWoman++)
-      cin >> popularity[idMan][idWoman];
-  
   cerr << "init men" << endl;
   vector<Man> man;
   for (int idMan=0; idMan<nbMen; idMan++)
   {
     vector<R> pop;
     for (int idWoman=0; idWoman<nbWomen; idWoman++)
-      pop.push_back(R(popularity[idMan][idWoman]));
+    {
+      int p; cin >> p;
+      pop.push_back(R(p));
+    }
     man.push_back(pop);
   }
   
@@ -120,7 +117,10 @@ int main()
   {
     vector<R> pop;
     for (int idMan=0; idMan<nbMen; idMan++)
-      pop.push_back(R(popularity[idMan][idWoman]));
+    {
+      int p; cin >> p;
+      pop.push_back(R(p));
+    }
     woman.push_back(pop);
   }
   
