@@ -1,0 +1,5 @@
+_data/*
+_figures/*
+__pycache__/*
+approximate
+exact
