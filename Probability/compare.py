@@ -150,7 +150,7 @@ if __name__ == "__main__":
 
   from matplotlib.backends.backend_pdf import PdfPages
 
-  with PdfPages('result.pdf') as pdf:
+  with PdfPages('compare.pdf') as pdf:
     for popularity, data in zip(instances, datas):
       draw_figure(popularity, data)
       pdf.savefig()
