@@ -1,5 +1,6 @@
 import numpy as np
-import json, math, random
+import json, math, random, os
+from decimal import Decimal
 from subprocess import Popen, PIPE
 
 import matplotlib.pyplot as plt
@@ -19,17 +20,16 @@ def transform(t):
     return np.array([transform(x) for x in t])
   return t
 
-def run(pop, multM = None, multW = None, S = 1000):
-  nbMen, nbWomen = pop.shape
-  if multM == None: multM = [2] * nbMen
-  if multW == None: multW = [2] * nbWomen
-  command = ["./main", str(S), str(nbMen), str(nbWomen)]
-  p = Popen(command, stdin=PIPE, stdout=PIPE)
-  instance = ""
-  for line in [multM, multW] + list(pop):
-    instance += " ".join(map(str, line)) + "\n"
-  output,_ = p.communicate(instance.encode())
-  return transform(json.loads(output.decode()))
+def run(name, nbMen, nbWomen, popM, popW, multM = None, multW = None, S = 1000):
+  with open(name, "w") as f:
+    if multM == None: multM = [1] * nbMen
+    if multW == None: multW = [1] * nbWomen
+    command = ["./main", str(S), str(nbMen), str(nbWomen)]
+    p = Popen(command, stdin=PIPE, stdout=f)
+    instance = ""
+    for line in [multM, multW] + list(popM) + list(popW):
+      instance += " ".join(map(str, line)) + "\n"
+    p.communicate(instance.encode())
 
 def min_nonzero(t):
   return t[t > 0].min()
@@ -71,8 +71,11 @@ def matrix_scaling(pop):
   return [M, W, pop]
     
 
-def plot(data, target="plot.pdf"):
-
+def plot(datafile, target):
+  
+  with open(datafile) as f:
+    data = transform(json.load(f))
+  
   ## proba of being matched
   S = sum(data["ALL_nbM"][0].values())
   data["ALL_couples"] = data["ALL_couples"] / S
@@ -91,6 +94,12 @@ def plot(data, target="plot.pdf"):
     ax.set_minor_locator(FixedLocator(pos))
     ax.set_major_locator(FixedLocator(pos, nbins=11))
     ax.set_major_formatter(FuncFormatter(lambda x, pos: label[x]))
+  
+  def get_norm(t):
+    sup, inf = t.max(), t[t>0].min()
+    if sup / inf > 10:
+      return LogNorm(inf/1.2, sup*1.2)
+    return None
     
   ticksM = [0] + list(np.cumsum(data["multM"]))
   ticksW = [0] + list(np.cumsum(data["multW"]))
@@ -100,59 +109,93 @@ def plot(data, target="plot.pdf"):
   
     ## plot popularities
     idx = sum(([i] * m for i,m in enumerate(data["multM"])), [])
-    idy = sum(([i] * m for i,m in enumerate(data["multW"])), [])
-    popularity = data["popularity"][idx,:][:,idy]
-    scaling = matrix_scaling(data["popularity"])
-    last = scaling[2].max() - scaling[2].min() > 1e-3
-    scaling[2] = scaling[2][idx,:][:,idy]
+    idy = sum(([j] * w for j,w in enumerate(data["multW"])), [])
+    popularityM = np.exp(data["logpopM"][idx,:][:,idy])
+    popularityW = np.exp(data["logpopW"][idy,:][:,idx].T)
     
-    plt.figure(figsize=(14+4*last,4))
-    ax = plt.subplot(1,3+last,1)
-    norm = LogNorm(min_nonzero(popularity)/2, popularity.max()*2)
-    imshow(popularity, norm=norm)
+    fig = plt.figure(figsize=(10,4))
+    ax = plt.subplot(1,2,1)
+    imshow(popularityM, norm=get_norm(popularityM))
     plt.colorbar()
     plt.xlabel("woman's id")
     plt.ylabel("man's id")
     set_ticks(ax.xaxis, ticksW)
     set_ticks(ax.yaxis, ticksM)
-    plt.title("popularity of each pair")
+    plt.title("popularity men give to women")
     
-    ax = plt.subplot(1,3+last,2)
-    plt.xlabel("man's id")
-    plt.ylabel("popularity")
-    set_ticks(ax.xaxis, ticksM)
-    plt.grid(which="major", linewidth=.5, alpha=.3)
-    X = [0] + list(np.cumsum(data["multM"]))
-    plt.plot(X[:-1], scaling[0], ".")
-    for i in range(data["nbMen"]):
-      if X[i+1] != X[i]:
-        plt.plot([X[i], X[i+1]-1], [scaling[0][i]]*2, color=plt.cm.tab10(0))
-    plt.yscale("log")
-    
-    ax = plt.subplot(1,3+last,3)
+    ax = plt.subplot(1,2,2)
+    imshow(popularityW, norm=get_norm(popularityW))
+    plt.colorbar()
     plt.xlabel("woman's id")
-    plt.ylabel("popularity")
+    plt.ylabel("man's id")
     set_ticks(ax.xaxis, ticksW)
-    plt.grid(which="major", linewidth=.5, alpha=.3)
-    X = [0] + list(np.cumsum(data["multW"]))
-    plt.plot(X[:-1], scaling[1], ".")
-    for i in range(data["nbWomen"]):
-      if X[i+1] != X[i]:
-        plt.plot([X[i], X[i+1]-1], [scaling[1][i]]*2, color=plt.cm.tab10(0))
-    plt.yscale("log")
+    set_ticks(ax.yaxis, ticksM)
+    plt.title("popularity women give to men")
     
-    if last:
-      ax = plt.subplot(1,4,4)
+    plt.tight_layout()
+    pdf.savefig()
+    plt.close(fig)
+    
+    # matrix scaling 
+    if set(data["multM"]) == {1} and set(data["multW"]) == {1}:
+      popularity = popularityM * popularityW
+      scaling = matrix_scaling(popularity)
+      
+      fig = plt.figure(figsize=(10,4))
+      ax = plt.subplot(1,2,1)
+      imshow(popularity, norm=get_norm(popularity))
+      plt.colorbar()
+      plt.xlabel("woman's id")
+      plt.ylabel("man's id")
+      set_ticks(ax.xaxis, ticksW)
+      set_ticks(ax.yaxis, ticksM)
+      plt.title("product of popularities")
+      
+      ax = plt.subplot(1,2,2)
       imshow(scaling[2])
       plt.colorbar()
       plt.xlabel("woman's id")
       plt.ylabel("man's id")
       set_ticks(ax.xaxis, ticksW)
       set_ticks(ax.yaxis, ticksM)
-      plt.title("normalized popularity of each pair")
+      plt.title("doubly stochastic matrix")
+      
+      plt.tight_layout()
+      pdf.savefig()
+      plt.close(fig)
+      
+      fig = plt.figure(figsize=(10,4))
+      ax = plt.subplot(1,2,1)
+      plt.xlabel("man's id")
+      plt.ylabel("popularity")
+      set_ticks(ax.xaxis, ticksM)
+      plt.grid(which="major", linewidth=.5, alpha=.3)
+      X = [0] + list(np.cumsum(data["multM"]))
+      plt.plot(X[:-1], scaling[0], ".")
+      for i in range(data["nbMen"]):
+        if X[i+1] != X[i]:
+          plt.plot([X[i], X[i+1]-1], [scaling[0][i]]*2, color=plt.cm.tab10(0))
+      plt.title("coefficient men")
+      if max(scaling[0])/min(scaling[0]) > 10:
+        plt.yscale("log")
+      
+      ax = plt.subplot(1,2,2)
+      plt.xlabel("woman's id")
+      plt.ylabel("popularity")
+      set_ticks(ax.xaxis, ticksW)
+      plt.grid(which="major", linewidth=.5, alpha=.3)
+      X = [0] + list(np.cumsum(data["multW"]))
+      plt.plot(X[:-1], scaling[1], ".")
+      for i in range(data["nbWomen"]):
+        if X[i+1] != X[i]:
+          plt.plot([X[i], X[i+1]-1], [scaling[1][i]]*2, color=plt.cm.tab10(0))
+      plt.title("coefficient women")
+      if max(scaling[1])/min(scaling[1]) > 10:
+        plt.yscale("log")
     
-    plt.tight_layout()
-    pdf.savefig()
+      plt.tight_layout()
+      pdf.savefig()
+      plt.close(fig)
     
     """
     ## plot multiplicities
@@ -174,18 +217,10 @@ def plot(data, target="plot.pdf"):
     """
     
     ## plot extremal matchings
-    fig = plt.figure(figsize=(14,4))
-    norm = LogNorm(1/(data["nbMen"]*data["nbWomen"]),1)
-    ax = plt.subplot(1,3,1)
-    plt.title("Pr[matched in some matching]")
-    im = imshow(data["ALL_couples"], norm=norm)
-    set_ticks(ax.xaxis, ticksW)
-    set_ticks(ax.yaxis, ticksM)
-    plt.xlabel("woman's id")
-    plt.ylabel("man's id")
-    plt.colorbar()
+    fig = plt.figure(figsize=(10,4))
+    norm = None #LogNorm(1/(data["nbMen"]*data["nbWomen"]),1)
     
-    ax = plt.subplot(1,3,2)
+    ax = plt.subplot(1,2,1)
     plt.title("Pr[matched in MOSM]")
     imshow(data["MOSM_couples"], norm=norm)
     set_ticks(ax.xaxis, ticksW)
@@ -194,7 +229,7 @@ def plot(data, target="plot.pdf"):
     plt.ylabel("man's id")
     plt.colorbar()
     
-    ax = plt.subplot(1,3,3)
+    ax = plt.subplot(1,2,2)
     plt.title("Pr[matched in WOSM]")
     imshow(data["WOSM_couples"], norm=norm)
     set_ticks(ax.xaxis, ticksW)
@@ -205,6 +240,7 @@ def plot(data, target="plot.pdf"):
     
     plt.tight_layout()
     pdf.savefig()
+    plt.close(fig)
     
     ## plot extremal matchings
     fig = plt.figure(figsize=(10,4))
@@ -233,9 +269,10 @@ def plot(data, target="plot.pdf"):
     # saving fig
     plt.tight_layout()
     pdf.savefig()
+    plt.close(fig)
     
     ## plot number partners
-    plt.figure(figsize=(10,4))
+    fig = plt.figure(figsize=(10,4))
     # men's rank
     ax = plt.subplot(1,2,1)
     plt.title("outcomes for men")
@@ -263,28 +300,60 @@ def plot(data, target="plot.pdf"):
     # saving fig
     plt.tight_layout()
     pdf.savefig()
+    plt.close(fig)
 
+if __name__ == "__main__":
+  instances = []
 
-# each person has capacity 1 or 2.
-M, W = 50, 50
-capa = [random.randint(1,2) for i in range(M)]
-mult = (capa, list(capa))
-random.shuffle(mult[1])
-p = [ 0.9 ** i for i in range(M) ]
-q = [ 0.95 ** i for i in range(W) ]
+  # men are students (capacity = 1), women are schools (capacity > 1)
+  capa = [ 3+i for i in range(10) ]
+  M, W = int(1.2*sum(capa)), len(capa)
+  mult = ([1]*M, capa)
+  popularity = ([[w*math.log(0.9) for w in range(W)]] * M,
+                [[m*math.log(0.9) for m in range(M)]] * W)
+  instances.append(("school-choice", M, W, mult, popularity))
 
-# men are students (capacity = 1), women are schools (capacity > 1)
-capa = [ 3+i for i in range(10) ]
-M, W = int(1.2*sum(capa)), len(capa)
-mult = ([1]*M, capa)
-p = [ 0.95 ** i for i in range(M) ]
-q = [ 0.5 ** i for i in range(W) ]
+  # each person has capacity 1 or 2.
+  M, W = 50, 50
+  capa = [random.randint(1,2) for i in range(M)]
+  mult = (capa, list(capa))
+  random.shuffle(mult[1])
+  popularity = ([[w*math.log(0.9) for w in range(W)]] * M,
+                [[m*math.log(0.9) for m in range(M)]] * W)
+  instances.append(("capacities", M, W, mult, popularity))
+  
+  # geometric popularity preferences
+  M, W = 100, 100
+  mult = ([1]*M, [1]*W)
+  pop = [0.5, 0.9, 0.99, 1]
+  for i in range(len(pop)):
+    for j in range(i, len(pop)):
+      name = "pop-%d-%d" % (100*pop[i], 100*pop[j])
+      popularity = ([[w*math.log(pop[i]) for w in range(W)]] * M,
+                    [[m*math.log(pop[j]) for m in range(M)]] * W)
+      instances.append((name, M, W, mult, popularity))
 
-popularity = np.zeros((M, W))
-for i in range(M):
-  for j in range(W):
-    if random.random() > 0.05:
-      popularity[i][j] = p[i] * q[j]  
-      #popularity[i][j] = (i-M//2) ** 2 + (j-W//2) ** 2
-      #popularity[i][j] = .1 + math.sin(i*5*math.pi/M) ** 2 + (j/W - 1/2) ** 2
-plot(run(popularity, *mult, S=10000))
+  # two poles
+  M, W = 100, 100
+  mult = ([1]*M, [1]*W)
+  popularity = (np.log(np.array([[ 1 + (m-M/3)**2 + (w-W/3)**2
+                for w in range(W)] for m in range(M)])),
+                np.log(np.array([[ 1 + (m-M/2)**2 + (w-3*W/4)**2
+                for m in range(M)] for w in range(W)])))
+  instances.append(("two-poles", M, W, mult, popularity))
+
+  # waves
+  M, W = 100, 100
+  mult = ([1]*M, [1]*W)
+  popularity = (np.log(np.array([[ 2 + np.cos(3*2*np.pi*(m+w)/(M+W))
+                for w in range(W)] for m in range(M)])),
+                np.log(np.array([[ 2 + np.cos(3*2*np.pi*(m-w)/(M+W))
+                for m in range(M)] for w in range(W)])))
+  instances.append(("waves", M, W, mult, popularity))
+
+  for name, M, W, mult, popularity in instances:
+    print("instance", name)
+    filedata, fileplot = "_data/%s.json"%name, "_plot/%s.pdf"%name
+    if not os.path.isfile(filedata):
+      run(filedata, M, W, *popularity, *mult, S=10**4)
+    plot(filedata, fileplot)

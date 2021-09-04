@@ -69,10 +69,14 @@ int main(int argc, char** argv)
     cin >> multM[i];
   for (int j=0; j<nbWomen; j++)
     cin >> multW[j];
-  vvd popularity(nbMen, vd(nbWomen, 0));
+  vvd logpopM(nbMen, vd(nbWomen, 0));
   for (int i=0; i<nbMen; i++)
     for (int j=0; j<nbWomen; j++)
-      cin >> popularity[i][j];
+      cin >> logpopM[i][j];
+  vvd logpopW(nbWomen, vd(nbMen, 0));
+  for (int j=0; j<nbWomen; j++)
+    for (int i=0; i<nbMen; i++)
+      cin >> logpopW[j][i];
   
   // multiplicities
   vi cumulM = multM, cumulW = multW;
@@ -114,9 +118,8 @@ int main(int argc, char** argv)
     if (S == 1)
       cerr << "Generation of preferences..." << endl;
     
-    vvi prefMen, prefWomen;
-    tie(prefMen, prefWomen) =
-      generateSymetric(generator, popularity);
+    vvi prefMen = generatePreferences(generator, logpopM);
+    vvi prefWomen = generatePreferences(generator, logpopW);
     
     // multiplicities
     vvi prefMenMult, prefWomenMult;
@@ -211,7 +214,8 @@ int main(int argc, char** argv)
     cerr << endl;
   
   cout << "{\"nbMen\":" << nbMen << ",\"nbWomen\":" << nbWomen << ",\n";
-  cout << "\"popularity\":" << popularity << ",\n";
+  cout << "\"logpopM\":" << logpopM << ",\n";
+  cout << "\"logpopW\":" << logpopW << ",\n";
   cout << "\"multM\":" << multM << ",\n";
   cout << "\"multW\":" << multW << ",\n";
   cout << "\"ALL_couples\":" << data_ALL_couples << ",\n";
