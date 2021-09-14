@@ -38,6 +38,7 @@ def imshow(t, norm=None, cmap=plt.cm.viridis):
   cmap.set_bad("black")
   extent = (0, t.shape[1], 0, t.shape[0])
   return plt.imshow(t, origin="lower", norm=norm, cmap=cmap, extent=extent)
+  #return plt.pcolormesh(t, norm=norm, cmap=cmap)
 
 def errorbars(t, label=None, major=None):
   y, e = [], []
@@ -51,7 +52,8 @@ def errorbars(t, label=None, major=None):
       y.append(0)
       e.append(0)
   y, e = np.array(y), np.array(e)
-  p = plt.errorbar(range(len(t)), y, e, fmt="o", markersize=1, label=label)
+  p = plt.errorbar(range(len(t)), y, e, fmt="o-", # add "o-" to draw lines
+    linewidth=.5, markersize=1, label=label)
   color = p[0].get_color()
   for b in p[2]: b.set_alpha(0.3)
   for a,b in zip(major, major[1:]+[len(t)]):
@@ -60,7 +62,7 @@ def errorbars(t, label=None, major=None):
 
 def matrix_scaling(pop):
   nbMen, nbWomen = pop.shape
-  M, W = np.ones(nbMen), np.ones(nbWomen)
+  M, W = np.zeros(nbMen), np.zeros(nbWomen)
   for _ in range(100):
     col = pop.mean(axis=1)
     M, pop = M * col, pop / col.reshape((nbMen, 1))
@@ -69,7 +71,23 @@ def matrix_scaling(pop):
   v = math.sqrt(W.mean() / M.mean())
   M, W = M * v, W / v
   return [M, W, pop]
-    
+  
+def matrix_scaling_log(pop):
+  nbMen, nbWomen = pop.shape
+  M, W = np.zeros(nbMen), np.zeros(nbWomen)
+  for t in range(1, 10**5):
+    maxi = pop.max(axis=0)
+    mean = maxi+np.log(np.exp(pop-maxi[np.newaxis,:]).mean(axis=0))
+    W, pop = W+mean, pop-mean[np.newaxis,:]
+    maxi = pop.max(axis=1)
+    mean = maxi+np.log(np.exp(pop-maxi[:,np.newaxis]).mean(axis=1))
+    M, pop = M+mean, pop-mean[:,np.newaxis]
+    if np.exp(pop).mean(axis=0).std() < 1e-6:
+      print("Scaling converged (%d steps)" % t)
+      break
+  v = (W.max() - M.max()) / 2
+  M, W = M + v, W - v
+  return [M, W, pop]
 
 def plot(datafile, target):
   
@@ -103,6 +121,8 @@ def plot(datafile, target):
     
   ticksM = [0] + list(np.cumsum(data["multM"]))
   ticksW = [0] + list(np.cumsum(data["multW"]))
+  mini = 1 / (ticksM[-1] * ticksW[-1])
+  norm_proba = LogNorm(mini, 1)
   
   with PdfPages(target) as pdf:
     plt.cm.viridis.set_bad("black")
@@ -110,13 +130,21 @@ def plot(datafile, target):
     ## plot popularities
     idx = sum(([i] * m for i,m in enumerate(data["multM"])), [])
     idy = sum(([j] * w for j,w in enumerate(data["multW"])), [])
-    popularityM = np.exp(data["logpopM"][idx,:][:,idy])
-    popularityW = np.exp(data["logpopW"][idy,:][:,idx].T)
+    popularityM = data["logpopM"][idx,:][:,idy]
+    popularityW = data["logpopW"][idy,:][:,idx].T
     
     fig = plt.figure(figsize=(10,4))
     ax = plt.subplot(1,2,1)
-    imshow(popularityM, norm=get_norm(popularityM))
-    plt.colorbar()
+    vmin, vmax = popularityM.min(), popularityM.max()
+    if vmax-vmin < 3:
+      imshow(np.exp(popularityM))
+      plt.colorbar()
+    else:
+      norm = LogNorm(math.exp(vmin), math.exp(vmax))
+      mappable = plt.cm.ScalarMappable(norm=norm)
+      mappable.set_array(popularityM)
+      imshow(popularityM)
+      plt.colorbar(mappable)
     plt.xlabel("woman's id")
     plt.ylabel("man's id")
     set_ticks(ax.xaxis, ticksW)
@@ -124,8 +152,16 @@ def plot(datafile, target):
     plt.title("popularity men give to women")
     
     ax = plt.subplot(1,2,2)
-    imshow(popularityW, norm=get_norm(popularityW))
-    plt.colorbar()
+    vmin, vmax = popularityW.min(), popularityW.max()
+    if vmax-vmin < 3:
+      imshow(np.exp(popularityW))
+      plt.colorbar()
+    else:
+      norm = LogNorm(math.exp(vmin), math.exp(vmax))
+      mappable = plt.cm.ScalarMappable(norm=norm)
+      mappable.set_array(popularityW)
+      imshow(popularityW)
+      plt.colorbar(mappable)
     plt.xlabel("woman's id")
     plt.ylabel("man's id")
     set_ticks(ax.xaxis, ticksW)
@@ -138,13 +174,21 @@ def plot(datafile, target):
     
     # matrix scaling 
     if set(data["multM"]) == {1} and set(data["multW"]) == {1}:
-      popularity = popularityM * popularityW
-      scaling = matrix_scaling(popularity)
+      popularity = popularityM + popularityW
+      scaling = matrix_scaling_log(popularity)
       
       fig = plt.figure(figsize=(10,4))
       ax = plt.subplot(1,2,1)
-      imshow(popularity, norm=get_norm(popularity))
-      plt.colorbar()
+      vmin, vmax = popularity.min(), popularity.max()
+      if vmax-vmin < 3:
+        imshow(np.exp(popularity))
+        plt.colorbar()
+      else:
+        norm = LogNorm(math.exp(vmin), math.exp(vmax))
+        mappable = plt.cm.ScalarMappable(norm=norm)
+        mappable.set_array(popularity)
+        imshow(popularity)
+        plt.colorbar(mappable)
       plt.xlabel("woman's id")
       plt.ylabel("man's id")
       set_ticks(ax.xaxis, ticksW)
@@ -152,7 +196,13 @@ def plot(datafile, target):
       plt.title("product of popularities")
       
       ax = plt.subplot(1,2,2)
-      imshow(scaling[2])
+      
+      if scaling[0].max() - scaling[0].min() < 10:
+        if scaling[1].max() - scaling[1].min() < 10:
+          if 0.01 < scaling[2].max() - scaling[2].min() < 10:
+            norm_proba = None
+      proba = np.exp(scaling[2]) / min(ticksM[-1], ticksW[-1])
+      imshow(proba, norm=norm_proba)
       plt.colorbar()
       plt.xlabel("woman's id")
       plt.ylabel("man's id")
@@ -176,8 +226,6 @@ def plot(datafile, target):
         if X[i+1] != X[i]:
           plt.plot([X[i], X[i+1]-1], [scaling[0][i]]*2, color=plt.cm.tab10(0))
       plt.title("coefficient men")
-      if max(scaling[0])/min(scaling[0]) > 10:
-        plt.yscale("log")
       
       ax = plt.subplot(1,2,2)
       plt.xlabel("woman's id")
@@ -190,8 +238,6 @@ def plot(datafile, target):
         if X[i+1] != X[i]:
           plt.plot([X[i], X[i+1]-1], [scaling[1][i]]*2, color=plt.cm.tab10(0))
       plt.title("coefficient women")
-      if max(scaling[1])/min(scaling[1]) > 10:
-        plt.yscale("log")
     
       plt.tight_layout()
       pdf.savefig()
@@ -219,10 +265,11 @@ def plot(datafile, target):
     ## plot extremal matchings
     fig = plt.figure(figsize=(10,4))
     norm = None #LogNorm(1/(data["nbMen"]*data["nbWomen"]),1)
+    #norm = LogNorm(1/(ticksM[-1]*ticksW[-1]), 1)
     
     ax = plt.subplot(1,2,1)
     plt.title("Pr[matched in MOSM]")
-    imshow(data["MOSM_couples"], norm=norm)
+    imshow(data["MOSM_couples"], norm=norm_proba)
     set_ticks(ax.xaxis, ticksW)
     set_ticks(ax.yaxis, ticksM)
     plt.xlabel("woman's id")
@@ -231,7 +278,7 @@ def plot(datafile, target):
     
     ax = plt.subplot(1,2,2)
     plt.title("Pr[matched in WOSM]")
-    imshow(data["WOSM_couples"], norm=norm)
+    imshow(data["WOSM_couples"], norm=norm_proba)
     set_ticks(ax.xaxis, ticksW)
     set_ticks(ax.yaxis, ticksM)
     plt.xlabel("woman's id")
@@ -327,10 +374,25 @@ if __name__ == "__main__":
   mult = ([1]*M, [1]*W)
   pop = [0.5, 0.9, 0.99, 1]
   for i in range(len(pop)):
-    for j in range(i, len(pop)):
+    for j in range(len(pop)):
       name = "pop-%d-%d" % (100*pop[i], 100*pop[j])
       popularity = ([[w*math.log(pop[i]) for w in range(W)]] * M,
                     [[m*math.log(pop[j]) for m in range(M)]] * W)
+      instances.append((name, M, W, mult, popularity))
+  
+  # reversed
+  M, W = 100, 100
+  mult = ([1]*M, [1]*W)
+  pop = [0.5, 1]
+  for i in range(len(pop)):
+    for j in range(len(pop)):
+      name = "rev-%d-%d" % (100*pop[i],100*pop[j])
+      popularity = ([[((w+M-m-1)%W)*math.log(pop[i])
+                      for w in range(W)]
+                      for m in range(M)],
+                    [[((m+W-w)%M)*math.log(pop[j])
+                      for m in range(M)]
+                      for w in range(W)])
       instances.append((name, M, W, mult, popularity))
 
   # two poles
@@ -355,5 +417,6 @@ if __name__ == "__main__":
     print("instance", name)
     filedata, fileplot = "_data/%s.json"%name, "_plot/%s.pdf"%name
     if not os.path.isfile(filedata):
-      run(filedata, M, W, *popularity, *mult, S=10**4)
-    plot(filedata, fileplot)
+      run(filedata, M, W, *popularity, *mult, S=10**6)
+    if not os.path.isfile(fileplot):
+      plot(filedata, fileplot)
